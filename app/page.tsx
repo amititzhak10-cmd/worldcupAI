@@ -1,10 +1,16 @@
 'use client';
 import { useEffect, useState } from 'react';
 
+interface Match {
+  teams?: { home?: { name?: string }; away?: { name?: string } };
+  goals?: { home?: number | null; away?: number | null };
+  league?: { name?: string };
+}
+
 export default function Home() {
-  const [matches, setMatches] = useState([]);
-  const [loading, setLoading] = useState(true);
-const [error, setError] = useState<string | null>(null);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/fixtures')
