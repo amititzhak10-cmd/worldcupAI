@@ -6,37 +6,38 @@ export async function GET() {
   }
 
   try {
-    // משחקים חיים
-    const liveRes = await fetch(
-      'https://free-api-live-football-data.p.rapidapi.com/football-current-live',
-      {
+    const [liveRes, todayRes, worldcupRes] = await Promise.all([
+      fetch('https://free-api-live-football-data.p.rapidapi.com/football-current-live', {
         headers: {
           'x-rapidapi-host': 'free-api-live-football-data.p.rapidapi.com',
           'x-rapidapi-key': apiKey,
         },
         cache: 'no-store',
-      }
-    );
-
-    // משחקים קרובים של היום
-    const today = new Date().toISOString().split('T')[0];
-    const upcomingRes = await fetch(
-      `https://free-api-live-football-data.p.rapidapi.com/football-get-matches-by-date?date=${today}`,
-      {
+      }),
+      fetch(`https://free-api-live-football-data.p.rapidapi.com/football-get-matches-by-date?date=${new Date().toISOString().split('T')[0]}`, {
         headers: {
           'x-rapidapi-host': 'free-api-live-football-data.p.rapidapi.com',
           'x-rapidapi-key': apiKey,
         },
         cache: 'no-store',
-      }
-    );
+      }),
+      fetch('https://free-api-live-football-data.p.rapidapi.com/football-get-all-leagues', {
+        headers: {
+          'x-rapidapi-host': 'free-api-live-football-data.p.rapidapi.com',
+          'x-rapidapi-key': apiKey,
+        },
+        cache: 'no-store',
+      }),
+    ]);
 
     const liveData = liveRes.ok ? await liveRes.json() : { response: [] };
-    const upcomingData = upcomingRes.ok ? await upcomingRes.json() : { response: [] };
+    const todayData = todayRes.ok ? await todayRes.json() : { response: [] };
+    const leagueData = worldcupRes.ok ? await worldcupRes.json() : { response: [] };
 
     return Response.json({
       live: liveData.response || [],
-      upcoming: upcomingData.response || upcomingData.matches || [],
+      upcoming: todayData.response || todayData.matches || [],
+      leagues: leagueData.response || leagueData.leagues || [],
     });
 
   } catch (error) {
