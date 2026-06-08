@@ -5,21 +5,27 @@ interface Match {
   teams?: { home?: { name?: string }; away?: { name?: string } };
   goals?: { home?: number | null; away?: number | null };
   league?: { name?: string };
+  fixture?: { date?: string; status?: { short?: string } };
+}
+
+interface FixturesData {
+  live: Match[];
+  upcoming: Match[];
 }
 
 export default function Home() {
-  const [matches, setMatches] = useState<Match[]>([]);
+  const [data, setData] = useState<FixturesData>({ live: [], upcoming: [] });
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/fixtures')
       .then(r => r.json())
-      .then(data => {
-        if (data.error) {
-          setError(data.error);
+      .then(res => {
+        if (res.error) {
+          setError(res.error);
         } else {
-          setMatches(data.response || []);
+          setData(res);
         }
         setLoading(false);
       })
@@ -28,6 +34,29 @@ export default function Home() {
         setLoading(false);
       });
   }, []);
+
+  const MatchCard = ({ match, isLive }: { match: Match; isLive: boolean }) => (
+    <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
+      {isLive && (
+        <div className="flex items-center gap-1 mb-2">
+          <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+          <span className="text-red-400 text-xs font-semibold">חי</span>
+        </div>
+      )}
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-right flex-1">{match.teams?.home?.name || '—'}</span>
+        <span className="bg-gray-800 px-3 py-1 rounded-lg text-sm font-bold mx-3">
+          {isLive
+            ? `${match.goals?.home ?? '0'} - ${match.goals?.away ?? '0'}`
+            : match.fixture?.date
+            ? new Date(match.fixture.date).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+            : 'vs'}
+        </span>
+        <span className="text-sm font-medium text-left flex-1">{match.teams?.away?.name || '—'}</span>
+      </div>
+      <p className="text-center text-xs text-gray-500 mt-2">{match.league?.name || ''}</p>
+    </div>
+  );
 
   return (
     <main className="min-h-screen bg-gray-950 text-white">
@@ -44,47 +73,51 @@ export default function Home() {
         <p className="text-gray-400 text-sm">נתונים אמיתיים · ניתוח ספורטיבי</p>
       </section>
 
-      <section className="px-4">
-        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">משחקים חיים</h2>
+      {loading && (
+        <div className="px-4 space-y-3">
+          {[1,2,3].map(i => (
+            <div key={i} className="bg-gray-900 rounded-xl p-4 border border-gray-800 animate-pulse h-16" />
+          ))}
+        </div>
+      )}
 
-        {loading && (
-          <div className="space-y-3">
-            {[1,2,3].map(i => (
-              <div key={i} className="bg-gray-900 rounded-xl p-4 border border-gray-800 animate-pulse h-16" />
-            ))}
-          </div>
-        )}
-
-        {error && (
+      {error && (
+        <div className="px-4">
           <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 text-center">
             <p className="text-gray-400">⚠️ {error}</p>
             <p className="text-gray-600 text-xs mt-2">אין מספיק מידע להצגה כרגע</p>
           </div>
-        )}
+        </div>
+      )}
 
-        {!loading && !error && matches.length === 0 && (
-          <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 text-center">
-            <p className="text-gray-400">אין משחקים חיים כרגע</p>
-          </div>
-        )}
-
-        {!loading && !error && matches.length > 0 && (
-          <div className="space-y-3">
-            {matches.map((match, i) => (
-              <div key={i} className="bg-gray-900 rounded-xl p-4 border border-gray-800">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">{match.teams?.home?.name || '—'}</span>
-                  <span className="bg-gray-800 px-3 py-1 rounded-lg text-sm font-bold">
-                    {match.goals?.home ?? '?'} - {match.goals?.away ?? '?'}
-                  </span>
-                  <span className="text-sm font-medium">{match.teams?.away?.name || '—'}</span>
-                </div>
-                <p className="text-center text-xs text-gray-500 mt-2">{match.league?.name || ''}</p>
+      {!loading && !error && (
+        <div className="px-4 space-y-6">
+          {data.live.length > 0 && (
+            <section>
+              <h2 className="text-sm font-semibold text-red-400 uppercase tracking-wider mb-3">🔴 משחקים חיים</h2>
+              <div className="space-y-3">
+                {data.live.map((match, i) => <MatchCard key={i} match={match} isLive={true} />)}
               </div>
-            ))}
-          </div>
-        )}
-      </section>
+            </section>
+          )}
+
+          {data.upcoming.length > 0 && (
+            <section>
+              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">📅 משחקים היום</h2>
+              <div className="space-y-3">
+                {data.upcoming.slice(0, 10).map((match, i) => <MatchCard key={i} match={match} isLive={false} />)}
+              </div>
+            </section>
+          )}
+
+          {data.live.length === 0 && data.upcoming.length === 0 && (
+            <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 text-center">
+              <p className="text-gray-400">אין משחקים כרגע</p>
+              <p className="text-gray-600 text-xs mt-1">בדוק שוב מאוחר יותר</p>
+            </div>
+          )}
+        </div>
+      )}
 
       <footer className="mt-10 px-4 py-6 text-center text-xs text-gray-600">
         נתונים מבוססים על API רשמי · אין המלצות הימורים
