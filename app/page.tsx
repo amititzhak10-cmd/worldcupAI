@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 export default function Home() {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/fixtures')
