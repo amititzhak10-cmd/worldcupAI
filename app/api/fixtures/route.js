@@ -6,7 +6,8 @@ export async function GET() {
   }
 
   try {
-    const response = await fetch(
+    // משחקים חיים
+    const liveRes = await fetch(
       'https://free-api-live-football-data.p.rapidapi.com/football-current-live',
       {
         headers: {
@@ -17,15 +18,26 @@ export async function GET() {
       }
     );
 
-    if (!response.ok) {
-      return Response.json(
-        { error: 'Failed to fetch data from football API' },
-        { status: response.status }
-      );
-    }
+    // משחקים קרובים של היום
+    const today = new Date().toISOString().split('T')[0];
+    const upcomingRes = await fetch(
+      `https://free-api-live-football-data.p.rapidapi.com/football-get-matches-by-date?date=${today}`,
+      {
+        headers: {
+          'x-rapidapi-host': 'free-api-live-football-data.p.rapidapi.com',
+          'x-rapidapi-key': apiKey,
+        },
+        cache: 'no-store',
+      }
+    );
 
-    const data = await response.json();
-    return Response.json(data);
+    const liveData = liveRes.ok ? await liveRes.json() : { response: [] };
+    const upcomingData = upcomingRes.ok ? await upcomingRes.json() : { response: [] };
+
+    return Response.json({
+      live: liveData.response || [],
+      upcoming: upcomingData.response || upcomingData.matches || [],
+    });
 
   } catch (error) {
     return Response.json(
