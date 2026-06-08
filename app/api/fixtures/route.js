@@ -6,7 +6,14 @@ export async function GET() {
   }
 
   try {
-    const [liveRes, todayRes, worldcupRes] = await Promise.all([
+    const dates = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      dates.push(d.toISOString().split('T')[0]);
+    }
+
+    const [liveRes, ...upcomingResponses] = await Promise.all([
       fetch('https://free-api-live-football-data.p.rapidapi.com/football-current-live', {
         headers: {
           'x-rapidapi-host': 'free-api-live-football-data.p.rapidapi.com',
@@ -14,30 +21,37 @@ export async function GET() {
         },
         cache: 'no-store',
       }),
-      fetch(`https://free-api-live-football-data.p.rapidapi.com/football-get-matches-by-date?date=${new Date().toISOString().split('T')[0]}`, {
-        headers: {
-          'x-rapidapi-host': 'free-api-live-football-data.p.rapidapi.com',
-          'x-rapidapi-key': apiKey,
-        },
-        cache: 'no-store',
-      }),
-      fetch('https://free-api-live-football-data.p.rapidapi.com/football-get-all-leagues', {
-        headers: {
-          'x-rapidapi-host': 'free-api-live-football-data.p.rapidapi.com',
-          'x-rapidapi-key': apiKey,
-        },
-        cache: 'no-store',
-      }),
+      ...dates.map(date =>
+        fetch(`https://free-api-live-football-data.p.rapidapi.com/football-get-matches-by-date?date=${date}`, {
+          headers: {
+            'x-rapidapi-host': 'free-api-live-football-data.p.rapidapi.com',
+            'x-rapidapi-key': apiKey,
+          },
+          cache: 'no-store',
+        })
+      ),
     ]);
 
     const liveData = liveRes.ok ? await liveRes.json() : { response: [] };
-    const todayData = todayRes.ok ? await todayRes.json() : { response: [] };
-    const leagueData = worldcupRes.ok ? await worldcupRes.json() : { response: [] };
+
+    const allUpcoming = [];
+    for (const res of upcomingResponses) {
+      if (res.ok) {
+        const data = await res.json();
+        const matches = data.response || data.matches || [];
+        allUpcoming.push(...matches);
+      }
+    }
+
+    // סנן רק משחקי FIFA World Cup
+    const worldcupMatches = allUpcoming.filter(m =>
+      m.league?.name?.toLowerCase().includes('world cup') ||
+      m.league?.name?.toLowerCase().includes('fifa')
+    );
 
     return Response.json({
       live: liveData.response || [],
-      upcoming: todayData.response || todayData.matches || [],
-      leagues: leagueData.response || leagueData.leagues || [],
+      upcoming: worldcupMatches.length > 0 ? worldcupMatches : allUpcoming.slice(0, 20),
     });
 
   } catch (error) {
