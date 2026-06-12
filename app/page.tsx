@@ -8,29 +8,26 @@ interface Match {
   fixture?: { date?: string; status?: { short?: string } };
 }
 
-interface FixturesData {
-  live: Match[];
-  upcoming: Match[];
-}
-
 export default function Home() {
-  const [data, setData] = useState<FixturesData>({ live: [], upcoming: [] });
-  const [loading, setLoading] = useState<boolean>(true);
+  const [live, setLive] = useState<Match[]>([]);
+  const [upcoming, setUpcoming] = useState<Match[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/fixtures')
       .then(r => r.json())
-      .then(res => {
-        if (res.error) {
-          setError(res.error);
+      .then(data => {
+        if (data.error) {
+          setError(data.error);
         } else {
-          setData(res);
+          setLive(data.live || []);
+          setUpcoming(data.upcoming || []);
         }
         setLoading(false);
       })
-      .catch(() => {
-        setError('לא ניתן לטעון נתונים כרגע');
+      .catch((err) => {
+        setError('שגיאה בטעינת נתונים');
         setLoading(false);
       });
   }, []);
@@ -40,7 +37,7 @@ export default function Home() {
       {isLive && (
         <div className="flex items-center gap-1 mb-2">
           <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-          <span className="text-red-400 text-xs font-semibold">חי</span>
+          <span className="text-red-400 text-xs font-semibold">🔴 חי</span>
         </div>
       )}
       <div className="flex items-center justify-between">
@@ -81,39 +78,38 @@ export default function Home() {
         </div>
       )}
 
-      {error && (
+      {error && !loading && (
         <div className="px-4">
           <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 text-center">
             <p className="text-gray-400">⚠️ {error}</p>
-            <p className="text-gray-600 text-xs mt-2">אין מספיק מידע להצגה כרגע</p>
           </div>
         </div>
       )}
 
       {!loading && !error && (
         <div className="px-4 space-y-6">
-          {data.live.length > 0 && (
+          {live.length > 0 && (
             <section>
               <h2 className="text-sm font-semibold text-red-400 uppercase tracking-wider mb-3">🔴 משחקים חיים</h2>
               <div className="space-y-3">
-                {data.live.map((match, i) => <MatchCard key={i} match={match} isLive={true} />)}
+                {live.map((match, i) => <MatchCard key={i} match={match} isLive={true} />)}
               </div>
             </section>
           )}
 
-          {data.upcoming.length > 0 && (
+          {upcoming.length > 0 && (
             <section>
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">📅 משחקים היום</h2>
+              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">📅 משחקים קרובים</h2>
               <div className="space-y-3">
-                {data.upcoming.slice(0, 10).map((match, i) => <MatchCard key={i} match={match} isLive={false} />)}
+                {upcoming.slice(0, 15).map((match, i) => <MatchCard key={i} match={match} isLive={false} />)}
               </div>
             </section>
           )}
 
-          {data.live.length === 0 && data.upcoming.length === 0 && (
+          {live.length === 0 && upcoming.length === 0 && (
             <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 text-center">
               <p className="text-gray-400">אין משחקים כרגע</p>
-              <p className="text-gray-600 text-xs mt-1">בדוק שוב מאוחר יותר</p>
+              <p className="text-gray-600 text-xs mt-1">בדוק שוב בעוד כמה דקות</p>
             </div>
           )}
         </div>
